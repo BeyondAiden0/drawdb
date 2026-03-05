@@ -220,6 +220,9 @@ export default function ControlPanel({ title, setTitle, lastSaved }) {
           const updatedFields = table.fields.slice();
           updatedFields.splice(a.data.index, 0, a.data.field);
           updateTable(a.tid, { fields: updatedFields });
+        } else if (a.component === "fields_delete_all") {
+          setRelationships((prev) => [...prev, ...a.data.relationships]);
+          updateTable(a.tid, { fields: a.data.fields });
         } else if (a.component === "field_add") {
           updateTable(a.tid, {
             fields: table.fields.filter((e) => e.id !== a.fid),
@@ -382,6 +385,13 @@ export default function ControlPanel({ title, setTitle, lastSaved }) {
           updateField(a.tid, a.fid, a.redo);
         } else if (a.component === "field_delete") {
           deleteField(a.data.field, a.tid, false);
+        } else if (a.component === "fields_delete_all") {
+          setRelationships((prev) =>
+            prev.filter(
+              (r) => !(r.startTableId === a.tid || r.endTableId === a.tid),
+            ),
+          );
+          updateTable(a.tid, { fields: [] });
         } else if (a.component === "field_add") {
           updateTable(a.tid, {
             fields: [

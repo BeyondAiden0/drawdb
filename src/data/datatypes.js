@@ -18,6 +18,23 @@ import { DB } from "./constants";
 const intRegex = /^-?\d*$/;
 const doubleRegex = /^-?\d*.?\d+$/;
 const binaryRegex = /^[01]+$/;
+const oddPositiveIntRegex = /^\d+$/;
+
+const isMyPrimeTypeValue = (value) => {
+  if (typeof value !== "string") return false;
+  if (!oddPositiveIntRegex.test(value)) return false;
+  const parsed = Number.parseInt(value, 10);
+  return parsed >= 1 && parsed % 2 === 1;
+};
+
+const myPrimeType = {
+  type: "MYPRIMETYPE",
+  color: intColor,
+  checkDefault: (field) => isMyPrimeTypeValue(field.default),
+  hasCheck: true,
+  isSized: false,
+  hasPrecision: false,
+};
 
 /* eslint-disable no-unused-vars */
 const defaultTypesBase = {
@@ -348,9 +365,12 @@ const defaultTypesBase = {
   },
 };
 
-export const defaultTypes = new Proxy(defaultTypesBase, {
-  get: (target, prop) => (prop in target ? target[prop] : false),
-});
+export const defaultTypes = new Proxy(
+  { ...defaultTypesBase, MYPRIMETYPE: myPrimeType },
+  {
+    get: (target, prop) => (prop in target ? target[prop] : false),
+  },
+);
 
 const mysqlTypesBase = {
   TINYINT: {
@@ -813,9 +833,12 @@ const mysqlTypesBase = {
   },
 };
 
-export const mysqlTypes = new Proxy(mysqlTypesBase, {
-  get: (target, prop) => (prop in target ? target[prop] : false),
-});
+export const mysqlTypes = new Proxy(
+  { ...mysqlTypesBase, MYPRIMETYPE: myPrimeType },
+  {
+    get: (target, prop) => (prop in target ? target[prop] : false),
+  },
+);
 
 const postgresTypesBase = {
   SMALLINT: {
@@ -1402,9 +1425,12 @@ const postgresTypesBase = {
   },
 };
 
-export const postgresTypes = new Proxy(postgresTypesBase, {
-  get: (target, prop) => (prop in target ? target[prop] : false),
-});
+export const postgresTypes = new Proxy(
+  { ...postgresTypesBase, MYPRIMETYPE: myPrimeType },
+  {
+    get: (target, prop) => (prop in target ? target[prop] : false),
+  },
+);
 
 const sqliteTypesBase = {
   INTEGER: {
@@ -1551,9 +1577,12 @@ const sqliteTypesBase = {
   },
 };
 
-export const sqliteTypes = new Proxy(sqliteTypesBase, {
-  get: (target, prop) => (prop in target ? target[prop] : false),
-});
+export const sqliteTypes = new Proxy(
+  { ...sqliteTypesBase, MYPRIMETYPE: myPrimeType },
+  {
+    get: (target, prop) => (prop in target ? target[prop] : false),
+  },
+);
 
 const mssqlTypesBase = {
   TINYINT: {
@@ -1972,9 +2001,12 @@ const mssqlTypesBase = {
   },
 };
 
-export const mssqlTypes = new Proxy(mssqlTypesBase, {
-  get: (target, prop) => (prop in target ? target[prop] : false),
-});
+export const mssqlTypes = new Proxy(
+  { ...mssqlTypesBase, MYPRIMETYPE: myPrimeType },
+  {
+    get: (target, prop) => (prop in target ? target[prop] : false),
+  },
+);
 
 const oraclesqlTypesBase = {
   INTEGER: {
@@ -2203,9 +2235,12 @@ const oraclesqlTypesBase = {
   },
 };
 
-export const oraclesqlTypes = new Proxy(oraclesqlTypesBase, {
-  get: (target, prop) => (prop in target ? target[prop] : false),
-});
+export const oraclesqlTypes = new Proxy(
+  { ...oraclesqlTypesBase, MYPRIMETYPE: myPrimeType },
+  {
+    get: (target, prop) => (prop in target ? target[prop] : false),
+  },
+);
 
 export const mariadbTypesBase = {
   UUID: {

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Action,
   Cardinality,
@@ -103,6 +103,133 @@ export default function Canvas() {
   // this is used to store the element that is clicked on
   // at the moment, and shouldn't be a part of the state
   let elementPointerDown = null;
+
+  const layoutStats = useMemo(() => {
+    const visibleTables = tables.filter((table) => !table.hidden);
+    const tableIdSet = new Set(visibleTables.map((table) => table.id));
+    const visibleRelationships = relationships.filter(
+      (relationship) =>
+        tableIdSet.has(relationship.startTableId) &&
+        tableIdSet.has(relationship.endTableId),
+    );
+
+    const adjacency = new Map();
+    const undirected = new Map();
+    visibleTables.forEach((table) => {
+      adjacency.set(table.id, new Set());
+      undirected.set(table.id, new Set());
+    });
+
+    visibleRelationships.forEach((relationship) => {
+      adjacency.get(relationship.startTableId)?.add(relationship.endTableId);
+      undirected.get(relationship.startTableId)?.add(relationship.endTableId);
+      undirected.get(relationship.endTableId)?.add(relationship.startTableId);
+    });
+
+    const visitState = new Map();
+    const memoDepth = new Map();
+    let hasCycle = false;
+
+    const depthFrom = (tableId) => {
+      const state = visitState.get(tableId) || 0;
+      if (state === 1) {
+        hasCycle = true;
+        return 0;
+      }
+      if (state === 2) return memoDepth.get(tableId) ?? 0;
+
+      visitState.set(tableId, 1);
+      let maxChildDepth = 0;
+      adjacency.get(tableId)?.forEach((childId) => {
+        maxChildDepth = Math.max(maxChildDepth, 1 + depthFrom(childId));
+      });
+      visitState.set(tableId, 2);
+      memoDepth.set(tableId, maxChildDepth);
+      return maxChildDepth;
+    };
+
+    let maxDepth = 0;
+    visibleTables.forEach((table) => {
+      maxDepth = Math.max(maxDepth, depthFrom(table.id));
+    });
+
+    const visited = new Set();
+    let connectedComponents = 0;
+    let isolatedTables = 0;
+    visibleTables.forEach((table) => {
+      if (visited.has(table.id)) return;
+      connectedComponents += 1;
+      const queue = [table.id];
+      visited.add(table.id);
+      let componentSize = 0;
+
+      while (queue.length > 0) {
+        const current = queue.shift();
+        componentSize += 1;
+        undirected.get(current)?.forEach((nextId) => {
+          if (!visited.has(nextId)) {
+            visited.add(nextId);
+            queue.push(nextId);
+          }
+        });
+      }
+
+      if (componentSize === 1 && (undirected.get(table.id)?.size ?? 0) === 0) {
+        isolatedTables += 1;
+      }
+    });
+
+    const bounds = {
+      minX: Infinity,
+      minY: Infinity,
+      maxX: -Infinity,
+      maxY: -Infinity,
+    };
+
+    const includeInBounds = (x, y, width, height) => {
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxX = Math.max(bounds.maxX, x + width);
+      bounds.maxY = Math.max(bounds.maxY, y + height);
+    };
+
+    visibleTables.forEach((table) => {
+      includeInBounds(
+        table.x,
+        table.y,
+        settings.tableWidth,
+        getTableHeight(table, settings.tableWidth, settings.showComments),
+      );
+    });
+    areas.forEach((area) => {
+      includeInBounds(area.x, area.y, area.width, area.height);
+    });
+    notes.forEach((note) => {
+      includeInBounds(note.x, note.y, note.width ?? noteWidth, note.height);
+    });
+
+    const hasBounds = Number.isFinite(bounds.minX);
+    const layoutWidth = hasBounds ? Math.round(bounds.maxX - bounds.minX) : 0;
+    const layoutHeight = hasBounds ? Math.round(bounds.maxY - bounds.minY) : 0;
+
+    return {
+      tableCount: visibleTables.length,
+      relationshipCount: visibleRelationships.length,
+      connectedComponents,
+      isolatedTables,
+      maxDepth,
+      hasCycle,
+      layoutWidth,
+      layoutHeight,
+    };
+  }, [
+    tables,
+    relationships,
+    areas,
+    notes,
+    settings.tableWidth,
+    settings.showComments,
+  ]);
 
   const isSameElement = (el1, el2) => {
     return el1.id === el2.id && el1.type === el2.type;
@@ -863,6 +990,46 @@ export default function Canvas() {
           </table>
         </div>
       )}
+      <div className="fixed left-4 bottom-4 border border-color bg-[rgba(var(--semi-grey-1),var(--tw-bg-opacity))]/40 rounded-xl p-4 backdrop-blur-xs pointer-events-none select-none">
+        <table className="table-auto [&_th]:text-left [&_td:last-child]:text-right [&_td:last-child]:min-w-[11ch]">
+          <thead>
+            <tr>
+              <th colSpan={2}>Layout Stats</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Tables</td>
+              <td>{layoutStats.tableCount}</td>
+            </tr>
+            <tr>
+              <td>Relationships</td>
+              <td>{layoutStats.relationshipCount}</td>
+            </tr>
+            <tr>
+              <td>Max depth</td>
+              <td>
+                {layoutStats.maxDepth}
+                {layoutStats.hasCycle ? " (cycle)" : ""}
+              </td>
+            </tr>
+            <tr>
+              <td>Components</td>
+              <td>{layoutStats.connectedComponents}</td>
+            </tr>
+            <tr>
+              <td>Isolated tables</td>
+              <td>{layoutStats.isolatedTables}</td>
+            </tr>
+            <tr>
+              <td>Layout size</td>
+              <td>
+                {layoutStats.layoutWidth} x {layoutStats.layoutHeight}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
