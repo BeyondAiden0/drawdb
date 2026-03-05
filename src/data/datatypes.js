@@ -115,6 +115,26 @@ const defaultTypesBase = {
     isSized: false,
     hasPrecision: false,
   },
+  MYPRIMETYPE: {
+    type: "MYPRIMETYPE",
+    color: intColor,
+    checkDefault: (field) => {
+      const value = Number(field.default);
+      if (!Number.isInteger(value) || value <= 1) {
+        return false;
+      }
+      for (let i = 2; i <= Math.sqrt(value); i++) {
+        if (value % i === 0) {
+          return false;
+        }
+      }
+      return true;
+    },
+    hasCheck: true,
+    isSized: false,
+    hasPrecision: false,
+    canIncrement: false,
+  },
   CHAR: {
     type: "CHAR",
     color: stringColor,
